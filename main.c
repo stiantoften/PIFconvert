@@ -133,13 +133,26 @@ int main(int argc, char *argv[]) {
     uint8_t bmpBody[width * height * 3];
 
     for (int i=0; i < width * height; i++) {
-        rgba_t rgba = palette[buffer[headerSize + paletteSize*4 + i]];
+        uint8_t pos = buffer[headerSize + paletteSize*4 + i];
+
+        rgba_t rgba;
+        if ((pos & 0x10u) == 0x10 && (pos & 0x8u) == 0) {
+            rgba = palette[pos - 8];
+        } else if ((pos & 0x10u) == 0 && (pos & 0x8u) == 0x8) {
+            rgba = palette[pos + 8];
+        } else {
+            rgba = palette[pos];
+        }
 
         bmpBody[i*3 + 0] = rgba.b;
         bmpBody[i*3 + 1] = rgba.g;
         bmpBody[i*3 + 2] = rgba.r;
     }
 
+    int outFileSize = (int)sizeof(bmpHeader) + (int)sizeof(bmpBody);
+    memcpy(&bmpHeader[0x02], &outFileSize, sizeof(outFileSize));
+    memcpy(&bmpHeader[0x12], &width, sizeof(width));
+    memcpy(&bmpHeader[0x16], &height, sizeof(height));
 
     FILE *outFile = fopen("out.bmp", "wb+");
     fwrite(&bmpHeader, sizeof(bmpHeader), 1, outFile);
