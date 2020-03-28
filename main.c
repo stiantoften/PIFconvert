@@ -41,19 +41,23 @@ const int HEADER_SIZE = 0x20;
 int main(int argc, char *argv[]) {
     char usage[] = "Usage: piftool [options] <input> [<output>]\n"
                    "Options:\n"
-                   "   -v: Verbose mode\n"
-                   "   -f: Force mode\n";
+                   "  -v: Verbose mode\n"
+                   "  -f: Force mode\n"
+                   "  -o: Offset in input file\n";
 
     // verbose enables printing, force disables all checks
-    int opt, verbose = 0, force = 0;
+    int opt, verbose = 0, force = 0, offset = 0;
 
-    while ((opt = getopt(argc, argv, "fv")) != -1) {
+    while ((opt = getopt(argc, argv, "fvo:")) != -1) {
         switch (opt) {
             case 'f':
                 force = 1;
                 break;
             case 'v':
                 verbose = 1;
+                break;
+            case 'o':
+                offset = atoi(optarg);
                 break;
             default:
                 printf("%s", usage);
@@ -84,9 +88,13 @@ int main(int argc, char *argv[]) {
     }
 
     fseek(file, 0, SEEK_END);
-    size_t fileSize = ftell(file);
+    size_t fileSize = ftell(file) - offset;
     rewind(file);
     uint8_t buffer[fileSize];
+
+    if (offset) {
+        fseek(file, offset, SEEK_SET);
+    }
 
     if (fread(buffer, 1, (size_t) fileSize, file) != fileSize) {
         fprintf(stderr, "Error: Only %zu bytes could be read\n", fileSize);
@@ -158,10 +166,10 @@ int main(int argc, char *argv[]) {
             rgba = palette[pos];
         }
 
-        int offset = i * 3;
-        bmpBody[offset + 0] = rgba.r;
-        bmpBody[offset + 1] = rgba.g;
-        bmpBody[offset + 2] = rgba.b;
+        int offs = i * 3;
+        bmpBody[offs + 0] = rgba.r;
+        bmpBody[offs + 1] = rgba.g;
+        bmpBody[offs + 2] = rgba.b;
     }
 
     uint32_t outFileSize = sizeof(bmpHeader) + sizeof(bmpBody);
